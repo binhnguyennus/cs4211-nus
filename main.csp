@@ -1,3 +1,3 @@
-# define 
-# define
-# define
+#define NoOfShop 2000; // 2000 shop
+#define NoOfFloor 10; // Expo is a hall with 10 floor
+#define
