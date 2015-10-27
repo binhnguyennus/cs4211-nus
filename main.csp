@@ -1,3 +1,18 @@
 #define NoOfShop 2000; // 2000 shop
-#define NoOfFloor 10; // Expo is a hall with 10 floor
-#define
+#define NoOfFloors 10; // Expo is a hall with 10 floor
+#define NoOfEvents 2;
+#define NoOfPlaces 2;
+
+//Event will be occured at place
+
+//expoEvent(i) = book.i -> setUp.i -> openForVisit.i -> close.i -> Skip;
+expoEvent(i) = book.i -> close.i -> Skip;
+expoPlace(j) = available.j -> placeOccupied.j -> eventEnd.j -> expoPlace(j);
+matching() = []j:{0..NoOfPlaces-1}@(available.j -> ([]i:{0..NoOfEvents-1}@(book.i -> placeOccupied.j -> close.i -> eventEnd.j -> matching())));
+
+//expoPlace(j) = []i:{0..NoOfEvent-1}@(book.i -> placeOccupied.j -> setUp.i -> close.i -> expoPlace(j));
+System() = (||i:{0..NoOfEvents-1}@expoEvent(i))||(||j:{0..NoOfPlaces-1}@expoPlace(j))||matching();
+
+//event duration
+//place 
+//vistors
