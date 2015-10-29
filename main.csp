@@ -3,16 +3,17 @@
 #define NoOfEvents 2;
 #define NoOfPlaces 2;
 
-//Event will be occured at place
+//Event will be occured at place. each place can only hold one event.
 
 //expoEvent(i) = book.i -> setUp.i -> openForVisit.i -> close.i -> Skip;
 expoEvent(i) = book.i -> close.i -> Skip;
-expoPlace(j) = available.j -> placeOccupied.j -> eventEnd.j -> expoPlace(j);
-matching() = []j:{0..NoOfPlaces-1}@(available.j -> ([]i:{0..NoOfEvents-1}@(book.i -> placeOccupied.j -> close.i -> eventEnd.j -> matching())));
+expoPlace(j) = available.j -> ([]i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j)));
 
 //expoPlace(j) = []i:{0..NoOfEvent-1}@(book.i -> placeOccupied.j -> setUp.i -> close.i -> expoPlace(j));
-System() = (||i:{0..NoOfEvents-1}@expoEvent(i))||(||j:{0..NoOfPlaces-1}@expoPlace(j))||matching();
+System() = (||i:{0..NoOfEvents-1}@expoEvent(i)) || (||j:{0..NoOfPlaces-1}@(expoPlace(j)));
 
 //event duration
 //place 
 //vistors
+//vistor will visit all event, each event can hold only limited number of customers
+customers(k) = visit.k -> leave.k -> customers(k);
