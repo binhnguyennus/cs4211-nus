@@ -1,0 +1,18 @@
+#define num_of_visitors 50;
+#define num_of_events 5;		
+
+var cap[num_of_events] = [5,10,6,7,5];	//capacity of 5 events
+ 
+var visitors[num_of_visitors];
+var cusVisited = 0;
+	
+Event() = |||i:{0..num_of_visitors}@Visitor(i,0);
+Visitor(i,j) =  [cap[j] == 0] Visitor(i,(j+1)%num_of_events)
+	[] [cap[j] > 0] Buying(i,j);
+
+
+Buying(i,j) = {cusVisited = cusVisited+1; cap[j] = cap[j] -1} -> Leave(i,j);
+Leave(i,j) = {cap[j] = cap[j] + 1}->Visitor(i,(j+1)%num_of_events);
+
+#define allCusHappy (cusVisited == num_of_visitors-1);
+#assert Event() reaches allCusHappy;
