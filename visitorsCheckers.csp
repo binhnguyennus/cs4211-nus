@@ -1,4 +1,4 @@
-#define NoOfShop 2000; // 2000 shop
+﻿#define NoOfShop 2000; // 2000 shop
 #define NoOfFloors 10; // Expo is a hall with 10 floor
 #define NoOfEvents 2;
 #define NoOfPlaces 2;
@@ -23,6 +23,6 @@ VisitSystem() = [] j:{0..NoOfPlaces-1}@([placeAvailableSlots[j] > 0] notFull -> 
 		  	placeAvailableSlots[j] = placeAvailableSlots[j] - visitorsGroups[k];
 		  	visitorsGroups[k] = 0;
 		  }
-		  -> VisitSystem())));
+		  -> visit())));
 		  
-//TODO: assert if at at anytime, event cannot hold customers
+//TODO: assert if at at anytime, event cannot hold customers.
