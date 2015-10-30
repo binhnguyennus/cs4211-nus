@@ -3,9 +3,27 @@
 #define NoOfEvents 2;
 #define NoOfPlaces 2;
 #define NoOfGroups 4;
+#define NoOfVisitors 100;
+#define lobbyCapacity 20;
 
-var placeAvailableSlots[NoOfPlaces] = [100, 200];
+var eventAvailable[NoOfEvents] = [5, 10];//, 6, 7, 5];
 var visitorsGroups[NoOfGroups] = [50, 40, 60, 20];
+var visited[NoOfVisitors][NoOfEvents];
+var visitors[NoOfVisitors];
+var visting[NoOfVisitors];
+var cusVisited = 0;
+var lobbyCount = 0;
+	
+//Event() = |||i:{0..NoOfVisitors}@Visitor(i,0);
+//Visitor(i,j) =  [cap[j] == 0] Visitor(i,(j+1)%NoOfEvents)
+//	[] [cap[j] > 0] Buying(i,j);
+//
+//
+//Buying(i,j) = {cusVisited = cusVisited+1; cap[j] = cap[j] -1} -> Leave(i,j);
+//Leave(i,j) = {cap[j] = cap[j] + 1}->Visitor(i,(j+1)%NoOfEvents);
+
+//#assert Event() reaches allCusHappy;
+
 
 //Event will be occured at place. each place can only hold one event.
 
@@ -18,11 +36,24 @@ System() = (|| i:{0..NoOfEvents-1}@expoEvent(i)) || (|| j:{0..NoOfPlaces-1}@(exp
 
 //visitors Process
 
-VisitSystem() = [] j:{0..NoOfPlaces-1}@([placeAvailableSlots[j] > 0] notFull -> (
-		  [] k:{0..NoOfGroups - 1}@([visitorsGroups[k] > 0] visitorsAt.k.j{
-		  	placeAvailableSlots[j] = placeAvailableSlots[j] - visitorsGroups[k];
-		  	visitorsGroups[k] = 0;
-		  }
-		  -> VisitSystem())));
+Visitor(k) = [lobbyCount < lobbyCapacity] enterExpo.k {
+		lobbyCount = lobbyCount + 1;
+	}
+	-> ([] j:{0..NoOfEvents-1}@([eventAvailable[j] > 0 && visting[k] == 0] visit.k.j {
+		eventAvailable[j] = eventAvailable[j] - 1;
+		visited[k][j] = 1;
+		visting[k] = 1;
+		lobbyCount = lobbyCount - 1; 
+	}
+	-> ([lobbyCount < lobbyCapacity] leave.k.j {
+		eventAvailable[j] = eventAvailable[j] + 1;
+		visting[k] = 0;
+		lobbyCount = lobbyCount + 1;
+	}
+	-> Visitor(k))));
+	
+VisitorSystem() = || k:{0..NoOfVisitors-1}@(Visitor(k));
+#define allCusHappy (&& k:{0..NoOfVisitors-1}@(&& j:{0..NoOfEvents-1}@(visited[k][j] == 0)));
+#assert VisitorSystem() reaches allCusHappy with min(NoOfVisitors);
 		  
 //TODO: assert if at at anytime, event cannot hold customers
