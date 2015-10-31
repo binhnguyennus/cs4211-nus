@@ -1,0 +1,37 @@
+#define NoOfEvents 2;
+#define NoOfGroups 4;
+#define NoOfVisitors 10;
+#define lobbyCapacity 7;
+
+var eventAvailable[NoOfEvents] = [4, 8];
+var groupSize[NoOfGroups] = [2, 2, 3, 3];
+var visited[NoOfVisitors][NoOfEvents];
+var visiting[NoOfVisitors];
+var groupVisitingCount[NoOfGroups];
+var group[NoOfVisitors] = [0, 0, 1, 1, 2, 2, 2, 3, 3, 3];
+var lobbyCount = 0;
+
+GroupVisitor(k) = [lobbyCount + groupSize[k] <= lobbyCapacity] groupEnterExpo.k {
+    lobbyCount = lobbyCount + groupSize[k];
+  }
+  -> ([] i:{0..NoOfVisitors - 1}@([] j:{0..NoOfEvents - 1}@(
+      [eventAvailable[j] > 0 && visiting[i] == 0 && group[i] == k && visited[i][j] == 0]
+      visitorEnterEvent.i.j {
+        eventAvailable[j] = eventAvailable[j] - 1;
+        visited[i][j] = 1;
+        visiting[i] = 1;
+        lobbyCount = lobbyCount - 1;
+        groupVisitingCount[k] = groupVisitingCount[k] + 1;
+      }
+      -> ([lobbyCount < lobbyCapacity] visitorLeaveEvent.i.j {
+            eventAvailable[j] = eventAvailable[j] + 1;
+            visiting[i] = 0;
+            lobbyCount = lobbyCount + 1;
+            groupVisitingCount[k] = groupVisitingCount[k] - 1;
+         }))))
+  -> [groupVisitingCount[k] == 0] groupLeaveExpo.k {
+    lobbyCount = lobbyCount - groupSize[k];
+  }
+  -> GroupVisitor(k);
+
+System() = || k:{0..NoOfGroups - 1}@(GroupVisitor(k));
