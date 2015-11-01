@@ -1,0 +1,51 @@
+﻿var timeSpent = [1, 2, 3, 4, 5, 6];
+var visited = [0,0,0,0,0,0];
+enum{Event1, Event2, Event3, Event4, Event5, Event6};
+#define timeLimit 10;
+
+var totalTimeSpent = 0;
+var event = -1;
+var totalEventsVisited = 0;
+
+System() = Customer();
+
+Customer() = Customer_Spend_Time();
+	if(totalTimeSpent >= timeLimit) 
+	{
+		Skip()
+	}
+	else
+	{
+		Customer()
+	};
+	
+Customer_Spend_Time() = Customer_Choose_Event(); 
+	if (visited[event] == 1)		//event already visited
+	{
+		Skip()
+	}
+	else 
+	{
+		VisitEvent(event)
+	};
+
+Customer_Choose_Event() = pcase {
+       2 : cus.Event1{event = Event1} -> Skip
+       3 : cus.Event2{event = Event2} -> Skip
+       2 : cus.Event3{event = Event3} -> Skip
+       1 : cus.Event4{event = Event4} -> Skip
+       3 : cus.Event5{event = Event5} -> Skip
+       2 : cus.Event6{event = Event6} -> Skip
+};
+
+VisitEvent(choice) = {
+	visited[choice] = 1;
+	totalEventsVisited++;
+	totalTimeSpent = totalTimeSpent + timeSpent[choice];
+}->Skip();
+
+#define goal totalTimeSpent >= timeLimit;
+#assert System() deadlockfree;
+#assert System() reaches goal with prob;
+#assert System() reaches goal with min(totalEventsVisited);
+#assert System() reaches goal with max(totalEventsVisited);
