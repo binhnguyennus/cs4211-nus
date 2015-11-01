@@ -3,7 +3,7 @@
 #define NoOfEvents 2;
 #define NoOfPlaces 2;
 #define NoOfGroups 4;
-#define NoOfVisitors 100;
+#define NoOfVisitors 5;
 #define lobbyCapacity 20;
 
 var eventAvailable[NoOfEvents] = [5, 10];//, 6, 7, 5];
@@ -29,17 +29,20 @@ var lobbyCount = 0;
 
 //expoEvent(i) = book.i -> setUp.i -> openForVisit.i -> close.i -> Skip;
 expoEvent(i) = book.i -> close.i -> Skip;
-expoPlace(j) = available.j -> ([] i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j)));
+//expoPlace(j) = available.j -> ([] i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j))); oo
+// deadlock! <init -> available.1 -> available.0 -> book.1 -> eventRunningOn.1 -> eventRunningOn.0 -> close.1 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0 -> book.0 -> eventRunningOn.1 -> eventRunningOn.0 -> close.0 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0>
+
+//rewrite
+expoPlace(j) = available.j -> ([] i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j))); 
+//deadlock! <init -> available.1 -> available.0 -> book.1 -> eventRunningOn.1 -> eventRunningOn.0 -> close.1 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0 -> book.0 -> eventRunningOn.1 -> eventRunningOn.0 -> close.0 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0>
+
 
 //expoPlace(j) = []i:{0..NoOfEvent-1}@(book.i -> placeOccupied.j -> setUp.i -> close.i -> expoPlace(j));
 System() = (|| i:{0..NoOfEvents-1}@expoEvent(i)) || (|| j:{0..NoOfPlaces-1}@(expoPlace(j)));
 
 //visitors Process
 
-Visitor(k) = [lobbyCount < lobbyCapacity] enterExpo.k {
-		lobbyCount = lobbyCount + 1;
-	}
-	-> ([] j:{0..NoOfEvents-1}@([eventAvailable[j] > 0 && visting[k] == 0] visit.k.j {
+VisitorInsideExpo(k) = ([] j:{0..NoOfEvents-1}@([eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
 		eventAvailable[j] = eventAvailable[j] - 1;
 		visited[k][j] = 1;
 		visting[k] = 1;
@@ -49,11 +52,26 @@ Visitor(k) = [lobbyCount < lobbyCapacity] enterExpo.k {
 		eventAvailable[j] = eventAvailable[j] + 1;
 		visting[k] = 0;
 		lobbyCount = lobbyCount + 1;
-	}
-	-> Visitor(k))));
+	} 
+	-> VisitorInsideExpo(k))))
+	[] ([&& j:{0..NoOfEvents-1}@(visited[k][j] == 1)] visitedAll.k
+	-> Skip);
+	
+Visitor(k) = [lobbyCount < lobbyCapacity] enterExpo.k {
+		lobbyCount = lobbyCount + 1;
+	} 
+	-> Skip; 
+VisitorInsideExpo(k); 
+leaveExpo.k {
+		lobbyCount = lobbyCount - 1;
+	} -> Skip;
 	
 VisitorSystem() = || k:{0..NoOfVisitors-1}@(Visitor(k));
-#define allCusHappy (&& k:{0..NoOfVisitors-1}@(&& j:{0..NoOfEvents-1}@(visited[k][j] == 0)));
-#assert VisitorSystem() reaches allCusHappy with min(NoOfVisitors);
+#define allCusHappy (&& k:{0..NoOfVisitors-1}@(&& j:{0..NoOfEvents-1}@(visited[k][j] == 1)));
+#assert VisitorSystem() reaches allCusHappy;
+#define someCusNotHappy (|| k:{0..NoOfVisitors-1}@(|| j:{0..NoOfEvents-1}@(visited[k][j] == 0)));
+#assert VisitorSystem() reaches someCusNotHappy;
+#assert System() deadlockfree;
+#assert VisitorSystem() deadlockfree;
 		  
 //TODO: assert if at at anytime, event cannot hold customers
