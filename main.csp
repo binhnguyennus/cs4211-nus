@@ -3,27 +3,21 @@
 #define NoOfEvents 2;
 #define NoOfPlaces 2;
 #define NoOfGroups 4;
-#define NoOfVisitors 5;
+#define NoOfVisitors 2;
 #define lobbyCapacity 20;
+#define visDuration 1;
+var maxTime = 10;
 
-var eventAvailable[NoOfEvents] = [5, 10];//, 6, 7, 5];
+var eventAvailable[NoOfEvents] = [1, 1];//, 6, 7, 5];
 var visitorsGroups[NoOfGroups] = [50, 40, 60, 20];
 var visited[NoOfVisitors][NoOfEvents];
 var visitors[NoOfVisitors];
 var visting[NoOfVisitors];
+var curTime[NoOfVisitors];
 var cusVisited = 0;
 var lobbyCount = 0;
-	
-//Event() = |||i:{0..NoOfVisitors}@Visitor(i,0);
-//Visitor(i,j) =  [cap[j] == 0] Visitor(i,(j+1)%NoOfEvents)
-//	[] [cap[j] > 0] Buying(i,j);
-//
-//
-//Buying(i,j) = {cusVisited = cusVisited+1; cap[j] = cap[j] -1} -> Leave(i,j);
-//Leave(i,j) = {cap[j] = cap[j] + 1}->Visitor(i,(j+1)%NoOfEvents);
-
-//#assert Event() reaches allCusHappy;
-
+var tick = 0;
+var numVisAll = 0;
 
 //Event will be occured at place. each place can only hold one event.
 
@@ -42,23 +36,27 @@ System() = (|| i:{0..NoOfEvents-1}@expoEvent(i)) || (|| j:{0..NoOfPlaces-1}@(exp
 
 //visitors Process
 
-VisitorInsideExpo(k) = ([] j:{0..NoOfEvents-1}@([eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
+VisitorInsideExpo(k) = ([] j:{0..NoOfEvents-1}@([curTime[k] == tick && eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
 		eventAvailable[j] = eventAvailable[j] - 1;
 		visited[k][j] = 1;
 		visting[k] = 1;
 		lobbyCount = lobbyCount - 1; 
+		curTime[k] = curTime[k] + visDuration;
 	}
-	-> ([lobbyCount < lobbyCapacity] leave.k.j {
+	-> ([curTime[k] == tick && lobbyCount < lobbyCapacity] leave.k.j {
 		eventAvailable[j] = eventAvailable[j] + 1;
 		visting[k] = 0;
 		lobbyCount = lobbyCount + 1;
 	} 
 	-> VisitorInsideExpo(k))))
-	[] ([&& j:{0..NoOfEvents-1}@(visited[k][j] == 1)] visitedAll.k
+	[] ([(curTime[k] == tick) && (&& j:{0..NoOfEvents-1}@(visited[k][j] == 1))] visitedAll.k {
+		numVisAll = numVisAll + 1;
+	}
 	-> Skip);
 	
 Visitor(k) = [lobbyCount < lobbyCapacity] enterExpo.k {
 		lobbyCount = lobbyCount + 1;
+		curTime[k] = tick;
 	} 
 	-> Skip; 
 VisitorInsideExpo(k); 
@@ -67,11 +65,14 @@ leaveExpo.k {
 	} -> Skip;
 	
 VisitorSystem() = || k:{0..NoOfVisitors-1}@(Visitor(k));
-#define allCusHappy (&& k:{0..NoOfVisitors-1}@(&& j:{0..NoOfEvents-1}@(visited[k][j] == 1)));
-#assert VisitorSystem() reaches allCusHappy;
-#define someCusNotHappy (|| k:{0..NoOfVisitors-1}@(|| j:{0..NoOfEvents-1}@(visited[k][j] == 0)));
-#assert VisitorSystem() reaches someCusNotHappy;
+//#alphabet TickCounter {i:{0..maxTime}@timer.i};
+TickCounter(t) = ([t + 1 < maxTime] timeTick {tick = t + 1} -> TickCounter(t + 1)) [] ([t == maxTime] endTick -> Skip);
+VisitorAndTickSystem() = TickCounter(0) || VisitorSystem(); 
+
+#define allCusHappy (lobbyCount == 0 && numVisAll == NoOfVisitors);
+#assert VisitorAndTickSystem() reaches allCusHappy;
+#assert VisitorAndTickSystem() reaches allCusHappy with min(tick);
 #assert System() deadlockfree;
-#assert VisitorSystem() deadlockfree;
+#assert VisitorAndTickSystem() deadlockfree;
 		  
 //TODO: assert if at at anytime, event cannot hold customers
