@@ -6,7 +6,7 @@
 #define NoOfVisitors 2;
 #define lobbyCapacity 20;
 #define visDuration 1;
-var maxTime = 10;
+#define maxTime 10;
 
 var eventAvailable[NoOfEvents] = [1, 1];//, 6, 7, 5];
 var visitorsGroups[NoOfGroups] = [50, 40, 60, 20];
@@ -21,8 +21,7 @@ var numVisAll = 0;
 
 //Event will be occured at place. each place can only hold one event.
 
-//expoEvent(i) = book.i -> setUp.i -> openForVisit.i -> close.i -> Skip;
-expoEvent(i) = book.i -> close.i -> Skip;
+expoEvent(i) = book.i -> setUp.i -> openForVisit.i -> close.i -> Skip;
 //expoPlace(j) = available.j -> ([] i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j))); oo
 // deadlock! <init -> available.1 -> available.0 -> book.1 -> eventRunningOn.1 -> eventRunningOn.0 -> close.1 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0 -> book.0 -> eventRunningOn.1 -> eventRunningOn.0 -> close.0 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0>
 
@@ -65,14 +64,14 @@ leaveExpo.k {
 	} -> Skip;
 	
 VisitorSystem() = || k:{0..NoOfVisitors-1}@(Visitor(k));
-//#alphabet TickCounter {i:{0..maxTime}@timer.i};
-TickCounter(t) = ([t + 1 < maxTime] timeTick {tick = t + 1} -> TickCounter(t + 1)) [] ([t == maxTime] endTick -> Skip);
+#alphabet TickCounter {i:{0..maxTime}@timer.i};
+TickCounter(t) = ([t + 1 < maxTime] timeTick.t -> tau{tick = t + 1;} -> TickCounter(t + 1)) [] ([t == maxTime] endTick -> Skip);
 VisitorAndTickSystem() = TickCounter(0) || VisitorSystem(); 
 
 #define allCusHappy (lobbyCount == 0 && numVisAll == NoOfVisitors);
 #assert VisitorAndTickSystem() reaches allCusHappy;
 #assert VisitorAndTickSystem() reaches allCusHappy with min(tick);
-#assert System() deadlockfree;
-#assert VisitorAndTickSystem() deadlockfree;
+//#assert System() deadlockfree;
+//#assert VisitorAndTickSystem() deadlockfree;
 		  
 //TODO: assert if at at anytime, event cannot hold customers
