@@ -1,0 +1,45 @@
+// Alarm System
+// If threat was detected, then raise the alarm
+
+var AlarmLevel : {0..5};  // 5 levels: low -> normal -> substantial -> severe -> critical
+
+var safe : {0..5}; // low -> normal -> substantial -> severe -> critical
+var on = false;
+channel trigger 0;
+channel alarm_trigger 0;
+channel threat 0;
+channel danger 0;
+
+// On/ Off Alarm System
+TurnOnAlarm = turnOn{on=true;safe=1} -> Skip; // Begin with the lowest level, if it cannot resolved, then escalate the level
+TurnOffAlarm = turnOff{on=false;safe=0} -> Skip; // Turn off alarm
+
+// Trigger Alarm
+TriggerAlarm = trigger?1 ->
+       atomic{if (safe > 0) {
+               TurnOffAlarm
+       }
+       else {
+               TurnOnAlarm
+       }};
+
+// Adjust safety level
+SafeChange = alarm_trigger?n -> atomic{adjust_safety_level{safe = n} -> Skip}; 
+// Raised alarm
+RaisedAlarm = (TriggerAlarm [] SafeChange); RaisedAlarm;
+
+NoThreat = threat -> danger!1 -> Threat [] nothreat -> Wait[1]; NoThreat;
+Threat = nothreat -> danger!0 -> NoThreat [] threat -> Wait[1]; Threat;
+
+// Initial Detector
+DangerDetector = NoThreat;
+
+// Alarm Behavior
+
+On = danger?1 -> trigger!1 -> On;
+Regular = adjust -> alarm_trigger!0 -> Regular;
+Controller = On;
+System = DangerDetector ||| RaisedAlarm ||| Controller;
+
+#assert System deadlockfree;
+#assert System divergencefree;
