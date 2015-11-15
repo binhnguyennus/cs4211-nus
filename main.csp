@@ -1,19 +1,17 @@
-#define NoOfShop 2000; // 2000 shop
-#define NoOfFloors 10; // Expo is a hall with 10 floor
-#define NoOfEvents 2;
-#define NoOfPlaces 2;
-#define NoOfGroups 4;
-#define NoOfVisitors 2;
-#define lobbyCapacity 20;
-#define visDuration 1;
-#define maxTime 10;
+//TODO: assert if at at anytime, event cannot hold customers
 
-var eventAvailable[NoOfEvents] = [1, 1];//, 6, 7, 5];
-var visitorsGroups[NoOfGroups] = [50, 40, 60, 20];
-var visited[NoOfVisitors][NoOfEvents];
-var visitors[NoOfVisitors];
-var visting[NoOfVisitors];
-var curTime[NoOfVisitors];
+#define NUM_EVENTS 2;
+#define NUM_VENUES 2;
+#define NUM_VISITORS 2;
+#define LOBBY_CAP 20;
+#define VIS_DUR 1;
+#define MAX_TIME 2;
+
+var eventAvailable[NUM_EVENTS] = [1, 1];//, 6, 7, 5];
+var visited[NUM_VISITORS][NUM_EVENTS];
+var visitors[NUM_VISITORS];
+var visting[NUM_VISITORS];
+var curTime[NUM_VISITORS];
 var cusVisited = 0;
 var lobbyCount = 0;
 var tick = 0;
@@ -22,38 +20,34 @@ var numVisAll = 0;
 //Event will be occured at place. each place can only hold one event.
 
 expoEvent(i) = book.i -> setUp.i -> openForVisit.i -> close.i -> Skip;
-//expoPlace(j) = available.j -> ([] i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j))); oo
-// deadlock! <init -> available.1 -> available.0 -> book.1 -> eventRunningOn.1 -> eventRunningOn.0 -> close.1 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0 -> book.0 -> eventRunningOn.1 -> eventRunningOn.0 -> close.0 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0>
 
 //rewrite
-expoPlace(j) = available.j -> ([] i:{0..NoOfEvents-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j))); 
+expoPlace(j) = available.j -> ([] i:{0..NUM_EVENTS-1}@(book.i -> eventRunningOn.j -> close.i -> eventEnd.j -> expoPlace(j))); 
 //deadlock! <init -> available.1 -> available.0 -> book.1 -> eventRunningOn.1 -> eventRunningOn.0 -> close.1 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0 -> book.0 -> eventRunningOn.1 -> eventRunningOn.0 -> close.0 -> eventEnd.1 -> available.1 -> eventEnd.0 -> available.0>
 
-
-//expoPlace(j) = []i:{0..NoOfEvent-1}@(book.i -> placeOccupied.j -> setUp.i -> close.i -> expoPlace(j));
-System() = (|| i:{0..NoOfEvents-1}@expoEvent(i)) || (|| j:{0..NoOfPlaces-1}@(expoPlace(j)));
+System() = (|| i:{0..NUM_EVENTS-1}@expoEvent(i)) || (|| j:{0..NUM_VENUES-1}@(expoPlace(j)));
 
 //visitors Process
 
-VisitorInsideExpo(k) = ([] j:{0..NoOfEvents-1}@([curTime[k] == tick && eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
+VisitorInsideExpo(k) = ([] j:{0..NUM_EVENTS-1}@([curTime[k] <= tick && eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
 		eventAvailable[j] = eventAvailable[j] - 1;
 		visited[k][j] = 1;
 		visting[k] = 1;
 		lobbyCount = lobbyCount - 1; 
-		curTime[k] = curTime[k] + visDuration;
+		curTime[k] = tick + VIS_DUR;
 	}
-	-> ([curTime[k] == tick && lobbyCount < lobbyCapacity] leave.k.j {
+	-> ([curTime[k] <= tick && lobbyCount < LOBBY_CAP] leave.k.j {
 		eventAvailable[j] = eventAvailable[j] + 1;
 		visting[k] = 0;
 		lobbyCount = lobbyCount + 1;
 	} 
 	-> VisitorInsideExpo(k))))
-	[] ([(curTime[k] == tick) && (&& j:{0..NoOfEvents-1}@(visited[k][j] == 1))] visitedAll.k {
+	[] ([(curTime[k] <= tick) && (&& j:{0..NUM_EVENTS-1}@(visited[k][j] == 1))] visitedAll.k {
 		numVisAll = numVisAll + 1;
 	}
 	-> Skip);
 	
-Visitor(k) = [lobbyCount < lobbyCapacity] enterExpo.k {
+Visitor(k) = [lobbyCount < LOBBY_CAP] enterExpo.k {
 		lobbyCount = lobbyCount + 1;
 		curTime[k] = tick;
 	} 
@@ -63,12 +57,12 @@ leaveExpo.k {
 		lobbyCount = lobbyCount - 1;
 	} -> Skip;
 	
-VisitorSystem() = || k:{0..NoOfVisitors-1}@(Visitor(k));
-#alphabet TickCounter {i:{0..maxTime}@timer.i};
-TickCounter(t) = ([t + 1 < maxTime] timeTick.t -> tau{tick = t + 1;} -> TickCounter(t + 1)) [] ([t == maxTime] endTick -> Skip);
+VisitorSystem() = || k:{0..NUM_VISITORS-1}@(Visitor(k));
+#alphabet TickCounter {i:{0..MAX_TIME}@timer.i};
+TickCounter(t) = ([t + 1 <= MAX_TIME] timeTick.t -> tau{tick = t + 1;} -> TickCounter(t + 1)) [] ([t == MAX_TIME] endTick -> Skip);
 VisitorAndTickSystem() = TickCounter(0) || VisitorSystem(); 
 
-#define allCusHappy (lobbyCount == 0 && numVisAll == NoOfVisitors);
+#define allCusHappy (lobbyCount == 0 && numVisAll == NUM_VISITORS);
 #assert VisitorAndTickSystem() reaches allCusHappy;
 #assert VisitorAndTickSystem() reaches allCusHappy with min(tick);
 //#assert System() deadlockfree;
