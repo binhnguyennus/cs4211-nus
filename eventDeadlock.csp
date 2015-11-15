@@ -20,3 +20,17 @@ System() = Visit(0);
 
 #define allVisited (&& j:{0..NoOfEvents-1}@(visited[j] == 1));
 #assert System reaches allVisited;
+
+// Performance can be product exhibition or music events
+Performance = getstage -> exhibition -> Performance [] getspeaker -> sayorsing -> Performance;
+
+// Press Conferences for meeting with customers or introduce new product
+Conference = gettables -> exhibition -> Conference [] getmic -> sayorsing -> Conference;
+
+// Expo Event
+ExpoEvent = getstage -> gettables -> ExpoEvent [] getspeaker -> getmic -> ExpoEvent;
+
+// Exhibition together
+expo = ExpoEvent || Conference || Performance;
+
+#assert expo deadlockfree;
