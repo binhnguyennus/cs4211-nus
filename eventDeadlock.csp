@@ -1,22 +1,19 @@
-﻿#define NoOfShop 2000; // 2000 shop
-#define NoOfFloors 10; // Expo is a hall with 10 floor
-#define NoOfEvents 2;
-#define NoOfPlaces 2;
-#define NoOfGroups 4;
-#define NoOfVisitors 100;
-#define lobbyCapacity 20;
+﻿#define NUM_EVENTS 5;
 
-var eventPreference[NoOfEvents][NoOfEvents] = [0, 0,
-											   1, 0];
+var eventPreference[NUM_EVENTS][NUM_EVENTS] = [0, 1, 0, 0, 0,
+											   0, 0, 0, 0, 0,
+											   1, 1, 0, 0, 0,
+											   0, 0, 0, 0, 1,
+											   0, 0, 1, 0, 0];
 
-var visited[NoOfEvents] = [0, 0];
+var held[NUM_EVENTS] = [0, 0, 0, 0, 0];
 
-Visit(k) = [] i:{0..NoOfEvents-1}@([&& j:{0..NoOfEvents-1}@((eventPreference[j][i] == 1 && visited[j] == 1)||(eventPreference[j][i]==0))] visit.i {
-		visited[i] = 1;
+Visit(k) = [] i:{0..NUM_EVENTS-1}@([&& j:{0..NUM_EVENTS-1}@((eventPreference[j][i] == 1 && held[j] == 1)||(eventPreference[j][i]==0)) && (held[i] == 0)] Event.i {
+		held[i] = 1;
 	}
 	-> Visit(k + 1));
 	
 System() = Visit(0);
 
-#define allVisited (&& j:{0..NoOfEvents-1}@(visited[j] == 1));
-#assert System reaches allVisited;
+#define allHeld (&& j:{0..NUM_EVENTS-1}@(held[j] == 1));
+#assert System reaches allHeld;
