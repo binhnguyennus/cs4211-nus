@@ -1,23 +1,25 @@
+/* This models the relationship between events and visitors in one day 
+Each visitor can visit an event for a particular time.
+Each visitor want to visit all events before leaving.
+Given cappacity of each event and capacity of lobby, we need to verify if expo can serve all visitor in given limited time.
+If it can, we display the minimum of time that satisfies above requirement.
+*/
+
 #define NUM_EVENTS 2;
-#define NUM_VENUES 2;
-#define NUM_VISITORS 2;
+#define NUM_VISITORS 5;
 #define LOBBY_CAP 20;
 #define VIS_DUR 1;
-#define MAX_TIME 2;
+#define MAX_TIME 10;
 
 #alphabet TickCounter {i:{0..MAX_TIME}@timer.i};
 
-var eventAvailable[NUM_EVENTS] = [1, 1];
-var visited[NUM_VISITORS][NUM_EVENTS];
-var visitors[NUM_VISITORS];
-var visting[NUM_VISITORS];
-var curTime[NUM_VISITORS];
-var held[NUM_EVENTS];
-var eventRunning[NUM_VENUES];
-var cusVisited = 0;
+var eventAvailable[NUM_EVENTS] = [2, 1];
+var visited[NUM_VISITORS][NUM_EVENTS]; //visitor k visited event j
+var visting[NUM_VISITORS]; //visitor k is visiting an event
+var curTime[NUM_VISITORS]; //the time visitor k will be free
 var lobbyCount = 0;
 var tick = 0;
-var numVisAll = 0;
+var numVisAll = 0; //number of visitors who visited all events.
 
 VisitorInsideExpo(k) = ([] j:{0..NUM_EVENTS-1}@([curTime[k] <= tick && eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
 		eventAvailable[j] = eventAvailable[j] - 1;
@@ -49,7 +51,8 @@ leaveExpo.k {
 	
 VisitorSystem() = || k:{0..NUM_VISITORS-1}@(Visitor(k));
 TickCounter(t) = ([t + 1 <= MAX_TIME] timeTick.t+1 -> tau{tick = t + 1;} -> TickCounter(t + 1)) [] ([t == MAX_TIME] endTick -> Skip);
-VisitorAndTickSystem() = TickCounter(0) || VisitorSystem(); 
+
+VisitorAndTickSystem() = TickCounter(0) || VisitorSystem();
 
 #define allCusHappy (lobbyCount == 0 && numVisAll == NUM_VISITORS);
 #assert VisitorAndTickSystem() reaches allCusHappy;
