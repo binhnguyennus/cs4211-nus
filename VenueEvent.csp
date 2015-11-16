@@ -1,0 +1,59 @@
+﻿/* This models the relationship between events and venues
+Each venue can hold one event for 1 day
+Each event has prerequisite events that need to be held before that event
+*/
+
+#define NUM_EVENTS 5;
+#define NUM_VENUES 2;
+#define EVENT_DUR 1;
+#define MAX_TIME 5;
+
+#alphabet DayCounter {i:{0..MAX_TIME}@timer.i};
+
+//Prerequisited of Events, (i,j) = 1 is equivalent to that event i needs to be held before event j
+//var eventPrerequisite[NUM_EVENTS][NUM_EVENTS] = [0, 1, 0, 0, 0,
+//											   0, 0, 0, 0, 0,
+//											   1, 1, 0, 0, 0,
+//											   0, 0, 0, 0, 1,
+//											   0, 0, 1, 0, 0];
+//var eventPrerequisite[NUM_EVENTS][NUM_EVENTS] = [0, 0, 0, 0, 0,
+//											   0, 0, 0, 0, 0,
+//											   0, 0, 0, 0, 0,
+//											   0, 0, 0, 0, 0,
+//											   0, 0, 0, 0, 0];
+var eventPrerequisite[NUM_EVENTS][NUM_EVENTS] = [0, 0, 0, 1, 1,
+											   0, 0, 0, 1, 1,
+											   1, 1, 0, 0, 0,
+											   0, 0, 0, 0, 0,
+											   0, 0, 0, 1, 0];
+
+var held[NUM_EVENTS];
+var curTime[NUM_VENUES]; // current 
+var eventRunning[NUM_VENUES];
+var day;
+
+ExpoEvent(i) = setUp.i -> openForVisit.i -> close.i -> Skip;
+ExpoVenue(j) = eventRunningOn.j -> eventEnd.j -> ExpoVenue(j); 
+
+Matching() =  ([] j:{0..NUM_VENUES-1}@([] i:{0..NUM_EVENTS-1}@([held[i] == 0 && eventRunning[j] == 0 && curTime[j] <= day && //event i is not held and no event running on venue j, current day is larger than the time that venue free
+			(&& k:{0..NUM_EVENTS-1}@((eventPrerequisite[k][i] == 1 && held[k] < day && held[k] > 0) || (eventPrerequisite[k][i]==0)))] eventOnVenue.i.j ->  //checking all required event held before ith event 1 day 
+			{held[i] = day; eventRunning[j] = 1; curTime[j] = day + EVENT_DUR;} -> eventRunningOn.j -> setUp.i -> 
+			(close.i -> eventEnd.j -> {eventRunning[j] = 0;} -> Matching()))));
+
+DayCounter(t) = ([t + 1 <= MAX_TIME] timeday.t+1 -> tau{day = t + 1;} -> DayCounter(t + 1)) [] ([t == MAX_TIME] endday -> Skip); //Counter system
+
+Initialize() = setDefaultValue { // We start from day 1 instead of 0 for better representation
+	var i = 0;
+	while (i < NUM_VENUES) {
+		curTime[i] = 1;
+		i++;
+	}
+	day = 1;
+} -> Skip;
+
+//The master System includes counter system, venue systems, event systems.
+System() = Initialize(); (DayCounter(1) || (|| i:{0..NUM_EVENTS-1}@ExpoEvent(i)) || (|| j:{0..NUM_VENUES-1}@(ExpoVenue(j))) || Matching);
+
+#define allEventsHeld ((&& j:{0..NUM_EVENTS-1}@(held[j] != 0)) && (&& i:{0..NUM_VENUES-1}@(eventRunning[i] == 0)));
+#assert System reaches allEventsHeld;
+#assert System reaches allEventsHeld with min(day);

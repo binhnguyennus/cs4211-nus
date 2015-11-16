@@ -1,0 +1,58 @@
+#define NUM_EVENTS 2;
+#define NUM_VENUES 2;
+#define NUM_VISITORS 2;
+#define LOBBY_CAP 20;
+#define VIS_DUR 1;
+#define MAX_TIME 2;
+
+#alphabet TickCounter {i:{0..MAX_TIME}@timer.i};
+
+var eventAvailable[NUM_EVENTS] = [1, 1];
+var visited[NUM_VISITORS][NUM_EVENTS];
+var visitors[NUM_VISITORS];
+var visting[NUM_VISITORS];
+var curTime[NUM_VISITORS];
+var held[NUM_EVENTS];
+var eventRunning[NUM_VENUES];
+var cusVisited = 0;
+var lobbyCount = 0;
+var tick = 0;
+var numVisAll = 0;
+
+VisitorInsideExpo(k) = ([] j:{0..NUM_EVENTS-1}@([curTime[k] <= tick && eventAvailable[j] > 0 && visting[k] == 0 && visited[k][j] == 0] visit.k.j {
+		eventAvailable[j] = eventAvailable[j] - 1;
+		visited[k][j] = 1;
+		visting[k] = 1;
+		lobbyCount = lobbyCount - 1; 
+		curTime[k] = tick + VIS_DUR;
+	} 
+	-> ([curTime[k] <= tick && lobbyCount < LOBBY_CAP] leave.k.j {
+		eventAvailable[j] = eventAvailable[j] + 1;
+		visting[k] = 0;
+		lobbyCount = lobbyCount + 1;
+	} 
+	-> VisitorInsideExpo(k))))
+	[] ([(curTime[k] <= tick) && (&& j:{0..NUM_EVENTS-1}@(visited[k][j] == 1))] visitedAll.k {
+		numVisAll = numVisAll + 1;
+	}
+	-> Skip);
+	
+Visitor(k) = [lobbyCount < LOBBY_CAP] enterExpo.k {
+		lobbyCount = lobbyCount + 1;
+		curTime[k] = tick;
+	} 
+	-> Skip; 
+VisitorInsideExpo(k); 
+leaveExpo.k {
+		lobbyCount = lobbyCount - 1;
+	} -> Skip;
+	
+VisitorSystem() = || k:{0..NUM_VISITORS-1}@(Visitor(k));
+TickCounter(t) = ([t + 1 <= MAX_TIME] timeTick.t+1 -> tau{tick = t + 1;} -> TickCounter(t + 1)) [] ([t == MAX_TIME] endTick -> Skip);
+VisitorAndTickSystem() = TickCounter(0) || VisitorSystem(); 
+
+#define allCusHappy (lobbyCount == 0 && numVisAll == NUM_VISITORS);
+#assert VisitorAndTickSystem() reaches allCusHappy;
+#assert VisitorAndTickSystem() reaches allCusHappy with min(tick);
+		  
+//TODO: assert if at at anytime, event cannot hold customers
